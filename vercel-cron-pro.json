@@ -1,0 +1,27 @@
+{
+  "functions": {
+    "src/app/api/cron/game-reminders/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/early-reminders/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/cache-cleanup/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/game-reminders",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/early-reminders", 
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/cache-cleanup",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

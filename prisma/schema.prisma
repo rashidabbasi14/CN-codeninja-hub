@@ -1,0 +1,303 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                       String         @id @default(cuid())
+  email                    String         @unique
+  firstName                String
+  lastName                 String
+  role                     String         @default("USER")
+  gender                   String         @default("PREFER_NOT_TO_SAY")
+  age                      Int?
+  departmentId             String?
+  avatarUrl                String?
+  privacyHideAge           Boolean        @default(false)
+  privacyHideGender        Boolean        @default(false)
+  isBlocked                Boolean        @default(false)
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+  password                 String?
+  passwordResetExpires     DateTime?
+  passwordResetToken       String?
+  phone                    String?
+  emailVerificationExpires DateTime?
+  emailVerificationToken   String?
+  isEmailVerified          Boolean        @default(false)
+  jobTitle                 String?
+  auditLogs                AuditLog[]
+  comments                 Comment[]
+  createdDepartments       Department[]   @relation("DepartmentCreator")
+  emailLogs                EmailLog[]
+  createdGames             Game[]
+  newsReactions            NewsReaction[]
+  posts                    Post[]
+  reactions                Reaction[]
+  registrations            Registration[]
+  teamMemberships          TeamMember[]
+  ledTeams                 Team[]         @relation("TeamLeader")
+  department               Department?    @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("users")
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  creator   User     @relation("DepartmentCreator", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users     User[]
+
+  @@map("departments")
+}
+
+model Post {
+  id        String    @id @default(cuid())
+  authorId  String
+  content   String
+  mediaUrls String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  comments  Comment[]
+  author    User      @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model Reaction {
+  id         String @id @default(cuid())
+  entityType String
+  entityId   String
+  userId     String
+  type       String
+  user       User   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([entityType, entityId, userId])
+  @@map("reactions")
+}
+
+model News {
+  id        String         @id @default(cuid())
+  title     String
+  body      String
+  mediaUrls String?
+  createdBy String
+  isPinned  Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  reactions NewsReaction[]
+
+  @@map("news")
+}
+
+model NewsReaction {
+  id     String @id @default(cuid())
+  newsId String
+  userId String
+  type   String
+  news   News   @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([newsId, userId])
+  @@map("news_reactions")
+}
+
+model Category {
+  id                   String    @id @default(cuid())
+  name                 String
+  gamesCountMode       String
+  startDate            DateTime
+  endDate              DateTime
+  dailyWindows         String
+  draftEmailTemplate   String?
+  perPersonCap         Int?
+  locationName         String
+  locationMapsLink     String?
+  status               String    @default("ACTIVE")
+  createdBy            String
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  registrationDeadline DateTime?
+  games                Game[]
+
+  @@map("categories")
+}
+
+model Game {
+  id                     String         @id @default(cuid())
+  categoryId             String
+  name                   String
+  weightage              Float          @default(1.0)
+  typeFormat             String
+  avgGameTime            Int
+  levels                 String
+  dateOrSlots            DateTime?
+  contestType            String
+  seedingMethod          String         @default("RANDOM")
+  groupSize              Int?
+  rounds                 Int?
+  allowDraws             Boolean        @default(false)
+  courtsRequiredPerMatch Int            @default(1)
+  minRestMinutes         Int            @default(15)
+  backToBackAllowed      Boolean        @default(false)
+  simultaneousGames      Int            @default(1)
+  createdBy              String
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  description            String?
+  reminders              GameReminder[]
+  category               Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  creator                User           @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  matches                Match[]
+  registrations          Registration[]
+  slots                  Slot[]
+  teams                  Team[]
+
+  @@map("games")
+}
+
+model Team {
+  id            String         @id @default(cuid())
+  gameId        String
+  name          String
+  teamLead      String
+  openTeam      Boolean        @default(false)
+  registrations Registration[]
+  members       TeamMember[]
+  game          Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  leader        User           @relation("TeamLeader", fields: [teamLead], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id     String @id @default(cuid())
+  teamId String
+  userId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+model Registration {
+  id              String  @id @default(cuid())
+  userId          String
+  gameId          String
+  level           String
+  mode            String
+  teamId          String?
+  allowAutoAssign Boolean @default(false)
+  game            Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  team            Team?   @relation(fields: [teamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user            User    @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([userId, gameId])
+  @@map("registrations")
+}
+
+model Slot {
+  id         String         @id @default(cuid())
+  gameId     String
+  timelineId Int            @default(1)
+  startTime  DateTime
+  endTime    DateTime
+  capacity   Int            @default(2)
+  published  Boolean        @default(false)
+  reminders  GameReminder[]
+  matches    Match[]
+  game       Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@map("slots")
+}
+
+model Match {
+  id               String   @id @default(cuid())
+  gameId           String
+  slotId           String?
+  participantAId   String
+  participantAType String
+  participantBId   String
+  participantBType String
+  winnerId         String?
+  winnerType       String?
+  scoreNotes       String?
+  flags            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  game             Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  slot             Slot?    @relation(fields: [slotId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("matches")
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  status    String
+  sentBy    String?
+  sentAt    DateTime @default(now())
+  recipient String
+  subject   String
+  sender    User?    @relation(fields: [sentBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("email_logs")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  entity    String
+  entityId  String
+  payload   String?
+  createdAt DateTime @default(now())
+  actor     User     @relation(fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("audit_logs")
+}
+
+model GameReminder {
+  id           String   @id @default(cuid())
+  gameId       String
+  slotId       String
+  reminderType String
+  sentAt       DateTime @default(now())
+  game         Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  slot         Slot     @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, slotId, reminderType])
+  @@map("game_reminders")
+}
+
+model Config {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  category    String   @default("GENERAL")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("config")
+}
